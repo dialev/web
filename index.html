@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FUCKPAY · CARD</title>
+  <style>
+    /* --- reset & base --- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Courier New', monospace;
+      position: relative;
+      overflow: hidden;
+    }
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0, 255, 255, 0.025) 3px,
+        rgba(0, 255, 255, 0.025) 4px
+      );
+      animation: scanMove 10s linear infinite;
+    }
+    @keyframes scanMove {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 100%; }
+    }
+    .grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: 0;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 600px;
+      width: 92%;
+      padding: 2rem 2rem 2.5rem;
+      border: 2px solid #00f0ff;
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.15), inset 0 0 40px rgba(0, 240, 255, 0.03);
+      background: rgba(10, 10, 10, 0.88);
+      backdrop-filter: blur(3px);
+      text-align: center;
+      animation: borderPulse 4s ease-in-out infinite;
+    }
+    @keyframes borderPulse {
+      0%, 100% { box-shadow: 0 0 40px rgba(0, 240, 255, 0.15), inset 0 0 40px rgba(0, 240, 255, 0.03); }
+      50% { box-shadow: 0 0 80px rgba(0, 240, 255, 0.35), inset 0 0 80px rgba(0, 240, 255, 0.06); }
+    }
+    .header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.2rem;
+    }
+    .brand {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: #00f0ff;
+      text-shadow: 0 0 15px #00f0ff, 0 0 30px #00aaff;
+      animation: glitchText 3s infinite;
+      position: relative;
+      display: inline-block;
+    }
+    .brand::before,
+    .brand::after {
+      content: "FUCKPAY";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .brand::before {
+      color: #ff00ff;
+      z-index: -1;
+      animation: glitchShift 2.8s infinite step-start;
+      transform: translate(-3px, 1px);
+      clip-path: inset(10% 0 70% 0);
+    }
+    .brand::after {
+      color: #ffff00;
+      z-index: -2;
+      animation: glitchShift 3.2s infinite step-start;
+      transform: translate(3px, -1px);
+      clip-path: inset(60% 0 20% 0);
+    }
+    @keyframes glitchText {
+      0%, 90%, 100% { transform: skew(0deg); }
+      93% { transform: skew(2deg); }
+      96% { transform: skew(-2deg); }
+    }
+    @keyframes glitchShift {
+      0%, 100% { clip-path: inset(10% 0 70% 0); }
+      25% { clip-path: inset(30% 0 50% 0); }
+      50% { clip-path: inset(60% 0 20% 0); }
+      75% { clip-path: inset(80% 0 5% 0); }
+    }
+    .chip {
+      color: rgba(0, 240, 255, 0.3);
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      padding: 0.2rem 0.8rem;
+      border-radius: 2px;
+    }
+
+    /* timer row */
+    .timer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      gap: 1rem;
+    }
+    .timer-display {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #00f0ff;
+      text-shadow: 0 0 20px #00f0ff, 0 0 40px #00aaff;
+      letter-spacing: 4px;
+      font-variant-numeric: tabular-nums;
+      min-width: 100px;
+      transition: color 0.3s;
+    }
+    .timer-display.warning {
+      color: #ffaa00;
+      text-shadow: 0 0 20px #ffaa00, 0 0 40px #ff8800;
+      animation: blink 0.5s step-start infinite;
+    }
+    .timer-display.expired {
+      color: #ff0040;
+      text-shadow: 0 0 20px #ff0040, 0 0 40px #ff0040;
+      animation: blink 0.3s step-start infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+    .progress-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(0, 240, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #00f0ff, #00aaff);
+      box-shadow: 0 0 20px #00f0ff;
+      transition: width 0.5s linear;
+    }
+
+    /* card preview */
+    .card-preview {
+      background: #0e0e0e;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.5rem 1.8rem;
+      margin-bottom: 1.5rem;
+      box-shadow: inset 0 0 40px rgba(0, 240, 255, 0.03), 0 0 30px rgba(0, 240, 255, 0.05);
+      text-align: left;
+      transition: border-color 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-preview::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 70% 30%, rgba(0,240,255,0.02), transparent 60%);
+      pointer-events: none;
+    }
+    .card-number-preview {
+      font-size: 1.8rem;
+      font-weight: 400;
+      letter-spacing: 6px;
+      color: #aaffff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+      margin-bottom: 1.2rem;
+      font-variant-numeric: tabular-nums;
+      word-break: break-all;
+    }
+    .card-number-preview .placeholder {
+      opacity: 0.25;
+    }
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: rgba(0, 240, 255, 0.5);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .card-row span {
+      color: #00f0ff;
+      font-weight: 400;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+    }
+    .card-row .label {
+      color: rgba(0, 240, 255, 0.3);
+      font-size: 0.6rem;
+    }
+
+    /* form */
+    .form-group {
+      margin-bottom: 1.2rem;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      color: rgba(0, 240, 255, 0.4);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 0.25rem;
+    }
+    .form-group input {
+      width: 100%;
+      background: rgba(0, 240, 255, 0.04);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      padding: 0.7rem 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      color: #aaffff;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      letter-spacing: 1px;
+    }
+    .form-group input:focus {
+      border-color: #00f0ff;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0, 240, 255, 0.02);
+    }
+    .form-group input::placeholder {
+      color: rgba(0, 240, 255, 0.15);
+      letter-spacing: 2px;
+      font-size: 0.8rem;
+    }
+    .row-2 {
+      display: flex;
+      gap: 1.2rem;
+    }
+    .row-2 .form-group {
+      flex: 1;
+    }
+
+    .pay-btn {
+      width: 100%;
+      background: transparent;
+      border: 2px solid #00f0ff;
+      color: #00f0ff;
+      padding: 0.9rem 0;
+      font-family: 'Courier New', monospace;
+      font-size: 1.2rem;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.05);
+      margin-top: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .pay-btn:hover:not(:disabled) {
+      background: #00f0ff;
+      color: #0a0a0a;
+      box-shadow: 0 0 60px rgba(0, 240, 255, 0.3);
+    }
+    .pay-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+    .pay-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .status {
+      margin-top: 1.2rem;
+      color: rgba(0, 240, 255, 0.3);
+      font-size: 0.7rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      transition: color 0.3s;
+    }
+    .status.success {
+      color: #00ff88;
+      text-shadow: 0 0 20px rgba(0,255,136,0.3);
+    }
+    .status.error {
+      color: #ff0040;
+      text-shadow: 0 0 20px rgba(255,0,64,0.3);
+    }
+    .status.expired {
+      color: #ff0040;
+      text-shadow: 0 0 20px rgba(255,0,64,0.5);
+      animation: blink 0.5s step-start infinite;
+    }
+
+    .flicker {
+      animation: flicker 6s step-start infinite;
+    }
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      2% { opacity: 0.9; }
+      4% { opacity: 1; }
+      5% { opacity: 0.95; }
+      8% { opacity: 1; }
+    }
+
+    @media (max-width: 500px) {
+      .container { padding: 1.2rem; }
+      .brand { font-size: 1.6rem; }
+      .card-number-preview { font-size: 1.3rem; letter-spacing: 4px; }
+      .row-2 { flex-direction: column; gap: 0; }
+      .timer-display { font-size: 1.6rem; min-width: 70px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="scanlines"></div>
+  <div class="container flicker">
+    <div class="header">
+      <span class="brand">FUCKPAY</span>
+      <span class="chip">● CARD</span>
+    </div>
+
+    <!-- timer + progress -->
+    <div class="timer-row">
+      <div class="timer-display" id="timerDisplay">02:00</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <!-- live card preview -->
+    <div class="card-preview" id="cardPreview">
+      <div class="card-number-preview" id="cardNumberPreview">
+        <span class="placeholder">•••• •••• •••• ••••</span>
+      </div>
+      <div class="card-row">
+        <span><span class="label">holder</span> <span id="holderPreview">YOUR NAME</span></span>
+        <span><span class="label">exp</span> <span id="expPreview">MM/YY</span></span>
+        <span><span class="label">cvv</span> <span id="cvvPreview">•••</span></span>
+      </div>
+    </div>
+
+    <!-- form -->
+    <form id="cardForm" autocomplete="off">
+      <div class="form-group">
+        <label for="cardNumber">card number</label>
+        <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="23" inputmode="numeric" />
+      </div>
+      <div class="form-group">
+        <label for="holderName">cardholder name</label>
+        <input type="text" id="holderName" placeholder="J. DOE" maxlength="30" />
+      </div>
+      <div class="row-2">
+        <div class="form-group">
+          <label for="expiry">expiry (MM/YY)</label>
+          <input type="text" id="expiry" placeholder="12/28" maxlength="5" />
+        </div>
+        <div class="form-group">
+          <label for="cvv">cvv</label>
+          <input type="password" id="cvv" placeholder="•••" maxlength="4" inputmode="numeric" />
+        </div>
+      </div>
+    </form>
+
+    <button class="pay-btn" id="payBtn">charge</button>
+    <div class="status" id="status">ready</div>
+  </div>
+
+  <script>
+    (function() {
+      // ----- timer -----
+      const TOTAL_SECONDS = 120; // 2 minutes
+      let remaining = TOTAL_SECONDS;
+      let timerInterval = null;
+      let expired = false;
+
+      const timerEl = document.getElementById('timerDisplay');
+      const progressFill = document.getElementById('progressFill');
+      const statusEl = document.getElementById('status');
+      const payBtn = document.getElementById('payBtn');
+      const cardPreview = document.getElementById('cardPreview');
+
+      function formatTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      }
+
+      function updateTimerUI() {
+        timerEl.textContent = formatTime(remaining);
+        const pct = (remaining / TOTAL_SECONDS) * 100;
+        progressFill.style.width = pct + '%';
+
+        timerEl.classList.remove('warning', 'expired');
+        if (expired) {
+          timerEl.classList.add('expired');
+          statusEl.textContent = '⛔ SESSION EXPIRED';
+          statusEl.className = 'status expired';
+          payBtn.disabled = true;
+          cardPreview.style.borderColor = '#ff0040';
+          cardPreview.style.boxShadow = '0 0 60px rgba(255,0,64,0.2)';
+        } else if (remaining <= 20) {
+          timerEl.classList.add('warning');
+          statusEl.textContent = '⚠️ time running out';
+          statusEl.className = 'status';
+        } else {
+          statusEl.textContent = 'ready';
+          statusEl.className = 'status';
+          payBtn.disabled = false;
+          cardPreview.style.borderColor = 'rgba(0, 240, 255, 0.2)';
+          cardPreview.style.boxShadow = 'inset 0 0 40px rgba(0, 240, 255, 0.03), 0 0 30px rgba(0, 240, 255, 0.05)';
+        }
+      }
+
+      function tick() {
+        if (expired) return;
+        remaining--;
+        if (remaining <= 0) {
+          remaining = 0;
+          expired = true;
+          if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+          }
+          updateTimerUI();
+          return;
+        }
+        updateTimerUI();
+      }
+
+      function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        remaining = TOTAL_SECONDS;
+        expired = false;
+        payBtn.disabled = false;
+        updateTimerUI();
+        timerInterval = setInterval(tick, 1000);
+      }
+
+      // reset timer after successful payment (optional)
+      function resetTimer() {
+        startTimer();
+      }
+
+      // ----- card preview updaters -----
+      const cardNumber = document.getElementById('cardNumber');
+      const holderName = document.getElementById('holderName');
+      const expiry = document.getElementById('expiry');
+      const cvv = document.getElementById('cvv');
+      const previewNumber = document.getElementById('cardNumberPreview');
+      const previewHolder = document.getElementById('holderPreview');
+      const previewExp = document.getElementById('expPreview');
+      const previewCvv = document.getElementById('cvvPreview');
+
+      function formatCardNumber(value) {
+        const raw = value.replace(/\D/g, '');
+        const groups = raw.match(/.{1,4}/g) || [];
+        return groups.join(' ').slice(0, 23);
+      }
+
+      function updatePreview() {
+        const rawNum = cardNumber.value.replace(/\s/g, '');
+        if (rawNum.length === 0) {
+          previewNumber.innerHTML = '<span class="placeholder">•••• •••• •••• ••••</span>';
+        } else {
+          const formatted = formatCardNumber(cardNumber.value);
+          previewNumber.textContent = formatted || '•••• •••• •••• ••••';
+        }
+        previewHolder.textContent = holderName.value.toUpperCase() || 'YOUR NAME';
+        previewExp.textContent = expiry.value || 'MM/YY';
+        previewCvv.textContent = cvv.value ? '•'.repeat(cvv.value.length) : '•••';
+      }
+
+      cardNumber.addEventListener('input', function() {
+        let raw = this.value.replace(/\s/g, '');
+        if (raw.length > 16) raw = raw.slice(0, 16);
+        this.value = formatCardNumber(raw);
+        updatePreview();
+      });
+      holderName.addEventListener('input', updatePreview);
+      expiry.addEventListener('input', function() {
+        let val = this.value.replace(/\D/g, '');
+        if (val.length >= 2) {
+          val = val.slice(0, 2) + '/' + val.slice(2, 4);
+        }
+        this.value = val;
+        updatePreview();
+      });
+      cvv.addEventListener('input', function() {
+        let val = this.value.replace(/\D/g, '');
+        if (val.length > 4) val = val.slice(0, 4);
+        this.value = val;
+        updatePreview();
+      });
+      updatePreview();
+
+      // ----- pay button -----
+      payBtn.addEventListener('click', function() {
+        if (expired || payBtn.disabled) return;
+
+        const num = cardNumber.value.replace(/\s/g, '');
+        const holder = holderName.value.trim();
+        const exp = expiry.value.trim();
+        const c = cvv.value.trim();
+
+        if (num.length < 16) {
+          statusEl.textContent = '⛔ invalid card number';
+          statusEl.className = 'status error';
+          return;
+        }
+        if (holder.length < 2) {
+          statusEl.textContent = '⛔ name required';
+          statusEl.className = 'status error';
+          return;
+        }
+        if (!/^\d{2}\/\d{2}$/.test(exp)) {
+          statusEl.textContent = '⛔ expiry (MM/YY)';
+          statusEl.className = 'status error';
+          return;
+        }
+        if (c.length < 3) {
+          statusEl.textContent = '⛔ CVV required';
+          statusEl.className = 'status error';
+          return;
+        }
+
+        // simulate charge
+        statusEl.textContent = '⏳ processing...';
+        statusEl.className = 'status';
+        payBtn.disabled = true;
+        cardPreview.style.borderColor = '#00ff88';
+        cardPreview.style.boxShadow = '0 0 60px rgba(0,255,136,0.2)';
+
+        setTimeout(() => {
+          statusEl.textContent = '✔ charge approved';
+          statusEl.className = 'status success';
+          payBtn.disabled = false;
+          cardPreview.style.borderColor = 'rgba(0, 240, 255, 0.2)';
+          cardPreview.style.boxShadow = 'inset 0 0 40px rgba(0, 240, 255, 0.03), 0 0 30px rgba(0, 240, 255, 0.05)';
+          // reset timer after 2s
+          setTimeout(() => {
+            resetTimer();
+            statusEl.textContent = 'ready';
+            statusEl.className = 'status';
+          }, 2000);
+        }, 2000);
+      });
+
+      // initial start
+      startTimer();
+
+      // random glitch on card number
+      setInterval(() => {
+        if (Math.random() < 0.08) {
+          const el = previewNumber;
+          const orig = el.textContent;
+          el.style.transform = 'skew(' + (Math.random() * 4 - 2) + 'deg)';
+          el.style.color = '#ff00ff';
+          setTimeout(() => {
+            el.style.transform = 'skew(0deg)';
+            el.style.color = '#aaffff';
+          }, 120);
+        }
+      }, 4000);
+    })();
+  </script>
+</body>
+</html>
